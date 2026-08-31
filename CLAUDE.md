@@ -34,12 +34,14 @@ repo history was wiped and force-pushed, and everything was re-encrypted with a 
 
 | Path | Contents |
 |---|---|
-| `index.html` | Site home page — status, 6 tiles for the main documents, 20 day cards. **Hand-built for the site; it has no counterpart in `00_CURRENT`.** |
+| `index.html` | Site home page — status, 8 tiles for the main documents, 20 day cards. **Hand-built for the site; it has no counterpart in `00_CURRENT`.** |
 | `01_תוכנית_רגועה_סיכום_מורחב_עם_פירוט_יומי.html` | Full itinerary |
 | `02_הזמנות_ומשימות.html` | Bookings/tasks board by date, and bookings per day |
 | `03_מלונות.html` | Hotels: status, deadlines, decision dossier |
 | `04_מדריך_אוכל.html` | Food guide, with map links and dietary-restriction tags |
-| `05_דוח_ביקורת_26-07-2026.html` | Audit report |
+| `05_דוח_ביקורת_26-07-2026.html` | Audit report (26/07/2026 — historical, deliberately never edited) |
+| `06_לוח_פעולות_ממוין.html` | Sortable action board — every deadline, sortable by urgency / date / trip day / category |
+| `07_דוח_גאפים_31-08-2026.html` | Cross-cutting gaps review (31/08/2026) — 20 findings plus a "what to do, in order" table |
 | `ימים_מפורט/` | 20 detailed day guides, `יום_0` … `יום_19` |
 | `_עזר/07_מפות_גוגל/` | Quick-navigation page for day 3 |
 | `DEPLOY_INSTRUCTIONS.md` | Deployment/rebuild runbook (Hebrew) — the authoritative operational doc |
@@ -55,7 +57,7 @@ day-3 maps CSV.
   without the password.
 - Day files follow `ימים_מפורט/יום_<N>_<D-M>_<תיאור>.html`, e.g. `יום_15_30-9_teamLab_אודאיבה.html`.
   `N` runs 0–19; `D-M` is the trip date (16-9 … 4-10, 2026).
-- Numeric prefixes (`01_`…`05_`) set the order shown on the home page.
+- Numeric prefixes (`01_`…`07_`) set the order shown on the home page.
 
 ## Updating content
 
@@ -70,7 +72,7 @@ Password and salt come from `LOCAL_SECRETS.md`.
 
 - **Always reuse the same salt.** Changing it invalidates every visitor's "Remember me"
   (`localStorage`) entry and forces everyone to re-enter the password. The salt currently baked into
-  all 27 files is `6bd3321e5abaf1f4e79315a1ebfd2269` — it is public by design (StatiCrypt needs it
+  all 29 files is `6bd3321e5abaf1f4e79315a1ebfd2269` — it is public by design (StatiCrypt needs it
   client-side) and is not a secret; the password is.
 - **If files are added, removed, or renamed, `index.html` must be rebuilt too.** It is not generated
   from `00_CURRENT`, so its tile and day-card links do not update themselves.
@@ -88,12 +90,25 @@ GitHub auth is username `meyals` plus a Personal Access Token (`repo` scope) in 
 On Windows, a stale `.git\index.lock` is cleared with `del .git\index.lock`. The site refreshes a
 minute or two after the push.
 
+**From the Cowork Linux VM the repo has no delete permission**, so git cannot clean up its own lock
+files and blocks itself on the next command. Move them aside before *and* after every git command —
+and note that **`HEAD.lock` blocks `git commit` independently of `index.lock`**, so clear both:
+
+```bash
+clr(){ for L in .git/index.lock .git/HEAD.lock .git/refs/heads/main.lock; do
+         [ -e "$L" ] && mv "$L" ".git/lk_$RANDOM$RANDOM"; done; return 0; }
+```
+
+The same limitation makes `git rebase --abort` and `git checkout` fail whenever they would have to
+remove or overwrite an untracked file. Prefer `git rebase --quit` (abandons the rebase, leaves HEAD
+and the working tree alone) over `--abort`, and commit from wherever HEAD ended up.
+
 ## Verifying a rebuild
 
 Since content is opaque, verification is structural. All checks should hold before pushing:
 
 ```bash
-# 27 HTML files, all carrying the same salt
+# 29 HTML files, all carrying the same salt
 find . -name '*.html' -not -path './.git/*' | wc -l
 grep -ho '"staticryptSaltUniqueVariableName":"[a-f0-9]*"' $(find . -name '*.html' -not -path './.git/*') | sort -u
 
@@ -104,9 +119,24 @@ for f in $(find . -name '*.html' -not -path './.git/*'); do sed '823d' "$f" | md
 ls ימים_מפורט | wc -l
 ```
 
-Beyond that, the checks recorded in `DEPLOY_INSTRUCTIONS.md` are manual and require the password:
-the new password opens all 7 page types, the old one fails, a wrong password reveals nothing, and all
-26 home-page links resolve to files that exist.
+The decryption check does **not** have to be manual. StatiCrypt's own library decrypts headlessly,
+which verifies every file in one pass without a browser:
+
+```js
+const B = process.env.HOME + '/.npm-global/lib/node_modules/staticrypt/lib/';
+const cryptoEngine = require(B + 'cryptoEngine.js');
+const codec = require(B + 'codec.js').init(cryptoEngine);
+const hp = await cryptoEngine.hashPassword(PASSWORD, SALT);   // decode needs the HASHED password
+const m  = html.match(/staticryptEncryptedMsgUniqueVariableName"\s*:\s*"([^"]+)"/); // JSON `:`, not `=`
+const r  = await codec.decode(m[1], hp, SALT);                // r.success, r.decoded
+```
+
+Two things that waste time if guessed wrong: the payload is stored as JSON (`"...Name":"<hex>"`, with
+a colon), and `codec.decode` takes the **hashed** password — passing the plaintext throws
+`Invalid hexString`.
+
+The remaining checks from `DEPLOY_INSTRUCTIONS.md`: the password opens all page types, a wrong
+password reveals nothing, and all 28 home-page links resolve to files that exist.
 
 ## Gotchas
 
@@ -115,9 +145,9 @@ the new password opens all 7 page types, the old one fails, a wrong password rev
 - **Do not try to decrypt or summarize page content.** Without the password it is not possible, and
   the password must not be pulled into the repo or into a chat transcript.
 - **`_עזר/` starts with an underscore.** GitHub Pages runs Jekyll by default, which excludes
-  underscore-prefixed directories from the build. If `_עזר/07_מפות_גוגל/יום_3_ניווט_מהיר.html`
-  404s on the live site, add an empty `.nojekyll` at the repo root. (Local file-existence checks pass
-  regardless, so this failure mode only shows up against the deployed site.)
+  underscore-prefixed directories from the build, so `_עזר/07_מפות_גוגל/יום_3_ניווט_מהיר.html` would
+  404 on the live site while every local file-existence check still passes. An empty `.nojekyll` at
+  the repo root disables Jekyll and fixes it — **committed as of 31/08/2026**; do not delete it.
 - **Repo visibility is load-bearing.** Free GitHub Pages requires a public repo; the encryption is
   what makes that acceptable. Do not add unencrypted trip content, screenshots, or notes.
 - **Distribute link and password over separate channels** (link by WhatsApp, password by voice), so
