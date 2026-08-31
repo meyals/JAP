@@ -35,14 +35,14 @@ repo history was wiped and force-pushed, and everything was re-encrypted with a 
 | Path | Contents |
 |---|---|
 | `index.html` | Site home page — status, 8 tiles for the main documents, 20 day cards. **Hand-built for the site; it has no counterpart in `00_CURRENT`.** |
-| `01_תוכנית_רגועה_סיכום_מורחב_עם_פירוט_יומי.html` | Full itinerary |
+| `01_תוכנית_רגועה_סיכום_מורחב_עם_פירוט_יומי.html` | The map: status, 20 day cards (each linking to its day file), 72 site cards, risks / open decisions / optional extras. **No per-day timeline since 31/8/2026** |
 | `02_הזמנות_ומשימות.html` | Bookings/tasks board by date, and bookings per day |
 | `03_מלונות.html` | Hotels: status, deadlines, decision dossier |
-| `04_מדריך_אוכל.html` | Food guide, with map links and dietary-restriction tags |
+| `04_מדריך_אוכל.html` | Food guide. **Generated** from the `FOOD:START/END` blocks inside the day files by `../_build/build_04.py` — never edit by hand |
 | `05_דוח_ביקורת_26-07-2026.html` | Audit report (26/07/2026 — historical, deliberately never edited) |
 | `06_לוח_פעולות_ממוין.html` | Sortable action board — every deadline, sortable by urgency / date / trip day / category |
 | `07_דוח_גאפים_31-08-2026.html` | Cross-cutting gaps review (31/08/2026) — 20 findings plus a "what to do, in order" table |
-| `ימים_מפורט/` | 20 detailed day guides, `יום_0` … `יום_19` |
+| `ימים_מפורט/` | **Source of truth.** 20 day files, `יום_0` … `יום_19`; each holds the timeline, route diagram, the full food section (112 Google Maps links), money, glossary, plan B and the rainy-day alternative |
 | `_עזר/07_מפות_גוגל/` | Quick-navigation page for day 3 |
 | `DEPLOY_INSTRUCTIONS.md` | Deployment/rebuild runbook (Hebrew) — the authoritative operational doc |
 | `.gitignore` | Excludes `LOCAL_SECRETS.md`, `.staticrypt.json`, `.tmplock_*` |
@@ -74,6 +74,8 @@ Password and salt come from `LOCAL_SECRETS.md`.
   (`localStorage`) entry and forces everyone to re-enter the password. The salt currently baked into
   all 29 files is `6bd3321e5abaf1f4e79315a1ebfd2269` — it is public by design (StatiCrypt needs it
   client-side) and is not a secret; the password is.
+- **Run `python3 ../_build/build_04.py` before every site rebuild**, so `04` matches the day files.
+- `index.html` has no plaintext source, but it *can* be decrypted with the StatiCrypt password (see the Node snippet in the project memory) — editing the decrypted copy and re-encrypting is cheaper than rebuilding it from scratch.
 - **If files are added, removed, or renamed, `index.html` must be rebuilt too.** It is not generated
   from `00_CURRENT`, so its tile and day-card links do not update themselves.
 - Changing the password re-encrypts everything and logs out all remembered visitors.
