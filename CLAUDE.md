@@ -34,17 +34,18 @@ repo history was wiped and force-pushed, and everything was re-encrypted with a 
 
 | Path | Contents |
 |---|---|
-| `index.html` | Site home page — status, 4 tiles for the main documents, 20 day cards. **Hand-built for the site; it has no counterpart in `00_CURRENT`.** |
+| `index.html` | Site home page — status, 5 tiles for the main documents, 20 day cards. **Hand-built for the site; it has no counterpart in `00_CURRENT`.** |
 | `01_לוח_פעולות.html` | **All tasks.** Sortable/filterable board (80 rows) plus the bookings by date and by day, the gaps report, and the risks / open decisions / optional extras. Merged from the old 02, 06, 07 and the cross-day part of 01 |
 | `02_מלונות.html` | Hotels: holds, status, cancellation deadlines, decision file |
 | `03_מדריך_אוכל.html` | Food guide. **Generated** from the `FOOD:START/END` blocks inside the day files by `../_build/build_04.py` — never edit by hand |
 | `ימים_מפורט/` | **Source of truth.** 20 day files (they now also carry the 72 site cards), `יום_0` … `יום_19`; each holds the timeline, route diagram, the full food section (108 Google Maps links), money, glossary, plan B and the rainy-day alternative |
 | `_עזר/07_מפות_גוגל/` | Quick-navigation page for day 3 |
+| `05_כרטיסי_USJ.html` | USJ Studio Pass + Express Pass 4 tickets (QR), one pair per traveler — אייל=1 · מיטל=2 · הדר=3 · לירון=4 · אלה=5. **Generated** from the 10 saved ticket/express HTML files in `00_CURRENT/USJ/` by `../_build/build_05_usj.py` — never edit by hand. Each pair is embedded as a `src="data:text/html;base64,..."` iframe (no JavaScript, per the site's no-JS footer claim).
 | `DEPLOY_INSTRUCTIONS.md` | Deployment/rebuild runbook (Hebrew) — the authoritative operational doc |
 | `.gitignore` | Excludes `LOCAL_SECRETS.md`, `.staticrypt.json`, `.tmplock_*` |
 
 Deliberately **not** published here: `00_דף_הבית.html` (its role is filled by `index.html`), `_archive/`,
-and the day-3 maps CSV. Since 31/8/2026 the site holds **25** HTML files.
+and the day-3 maps CSV. Since 6/9/2026 the site holds **26** HTML files.
 
 ### Naming conventions
 
@@ -71,6 +72,7 @@ Password and salt come from `LOCAL_SECRETS.md`.
   all 29 files is `6bd3321e5abaf1f4e79315a1ebfd2269` — it is public by design (StatiCrypt needs it
   client-side) and is not a secret; the password is.
 - **Run `python3 ../_build/build_04.py` before every site rebuild**, so `04` matches the day files.
+- **Run `python3 ../_build/build_05_usj.py` too**, so `05` picks up any change to `00_CURRENT/USJ/`.
 - `index.html` has no plaintext source, but it *can* be decrypted with the StatiCrypt password (see the Node snippet in the project memory) — editing the decrypted copy and re-encrypting is cheaper than rebuilding it from scratch.
 - **If files are added, removed, or renamed, `index.html` must be rebuilt too.** It is not generated
   from `00_CURRENT`, so its tile and day-card links do not update themselves.
