@@ -76,6 +76,13 @@ Password and salt come from `LOCAL_SECRETS.md`.
 - `index.html` has no plaintext source, but it *can* be decrypted with the StatiCrypt password (see the Node snippet in the project memory) — editing the decrypted copy and re-encrypting is cheaper than rebuilding it from scratch.
 - **If files are added, removed, or renamed, `index.html` must be rebuilt too.** It is not generated
   from `00_CURRENT`, so its tile and day-card links do not update themselves.
+- **`00_דף_הבית.html` in the site root is NOT a content page — it is a 630-byte unencrypted
+  redirect to `index.html`, and it must stay unencrypted.** The 🏠 button inside every day file and
+  inside `05`/`07` points at `00_דף_הבית.html` because that is the correct home in `00_CURRENT`,
+  where the real home page lives. That page is not published (the site's home is `index.html`), so
+  without this stub all 42 of those links 404. It redirects with `location.replace()` (so Back does
+  not bounce) plus a `<meta http-equiv="refresh">` fallback for the no-JavaScript path. Do not
+  "fix" the 🏠 links in the day files instead — that would break navigation in `00_CURRENT`.
 - Changing the password re-encrypts everything and logs out all remembered visitors.
 
 Then publish:
@@ -108,14 +115,11 @@ and the working tree alone) over `--abort`, and commit from wherever HEAD ended 
 Since content is opaque, verification is structural. All checks should hold before pushing:
 
 ```bash
-# 29 HTML files, all carrying the same salt
-find . -name '*.html' -not -path './.git/*' | wc -l
+# 30 HTML files: 29 encrypted + 00_דף_הבית.html, which is a deliberate plaintext redirect
+find . -name '*.html' -not -path './.git/*' -not -name '*.bak*' | wc -l
 grep -ho '"staticryptSaltUniqueVariableName":"[a-f0-9]*"' $(find . -name '*.html' -not -path './.git/*') | sort -u
 
-# every file is the identical StatiCrypt template apart from its payload line (823)
-for f in $(find . -name '*.html' -not -path './.git/*'); do sed '823d' "$f" | md5sum; done | sort -u | wc -l   # → 1
-
-# 20 day guides
+# 21 day guides (17ב — the Fuji alternative — has been published since 13/9/2026)
 ls ימים_מפורט | wc -l
 ```
 
@@ -135,8 +139,16 @@ Two things that waste time if guessed wrong: the payload is stored as JSON (`"..
 a colon), and `codec.decode` takes the **hashed** password — passing the plaintext throws
 `Invalid hexString`.
 
+**Do not use `sed '823d' | md5sum` for the template check.** The payload line number is not the same
+in every file, and even after deleting the right line the 29 hashes still differ because each
+`<title>` differs. Normalise in Python instead — replace the
+`staticryptEncryptedMsgUniqueVariableName` value, the `<title>...</title>`, and every base64 run of
+200+ chars with a constant, then hash. That yields exactly one template for all 29 encrypted files.
+
 The remaining checks from `DEPLOY_INSTRUCTIONS.md`: the password opens all page types, a wrong
-password reveals nothing, and all 28 home-page links resolve to files that exist.
+password reveals nothing, and **every relative link in every published file resolves to a file that
+exists** — not just the ones on the home page. Walk all 30 files, resolve each `href`/`src` against
+the file's own directory, and assert zero misses (194 relative links, 0 broken as of 13/9/2026).
 
 ## Gotchas
 
